@@ -158,7 +158,7 @@ We have successfully created a **comprehensive, professional-grade MicroPython s
 # Complete setup in one command
 ./setup.sh
 
-# Deploy to your CYD device  
+# Deploy to your CYD device
 ./setup.sh deploy
 ```
 

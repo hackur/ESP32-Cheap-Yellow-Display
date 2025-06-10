@@ -56,13 +56,13 @@ echo -e "${BLUE}Deploying CYD Stopwatch to $PORT using $METHOD...${NC}"
 case "$METHOD" in
     "mpremote")
         print_step "Using mpremote for deployment..."
-        
+
         # Check if mpremote is available
         if ! command -v mpremote >/dev/null 2>&1; then
             print_error "mpremote not found. Please install it or use the setup script."
             exit 1
         fi
-        
+
         # Deploy Python files
         print_step "Copying Python files..."
         if mpremote connect "$PORT" fs cp *.py :; then
@@ -71,7 +71,7 @@ case "$METHOD" in
             print_error "Failed to deploy Python files"
             exit 1
         fi
-        
+
         # Create lib directory and deploy libraries
         print_step "Creating lib directory and copying libraries..."
         mpremote connect "$PORT" fs mkdir lib 2>/dev/null || true
@@ -81,21 +81,21 @@ case "$METHOD" in
             print_error "Failed to deploy libraries"
             exit 1
         fi
-        
+
         print_success "Deployment complete!"
         ;;
-        
+
     "ampy")
         print_step "Using ampy for deployment..."
-        
+
         # Check if ampy is available
         if ! command -v ampy >/dev/null 2>&1; then
             print_error "ampy not found. Please install it or use the setup script."
             exit 1
         fi
-        
+
         export AMPY_PORT="$PORT"
-        
+
         # Deploy Python files
         print_step "Copying Python files..."
         for file in *.py; do
@@ -109,11 +109,11 @@ case "$METHOD" in
                 fi
             fi
         done
-        
+
         # Create lib directory and deploy libraries
         print_step "Creating lib directory..."
         ampy mkdir lib 2>/dev/null || true
-        
+
         print_step "Copying libraries..."
         for file in lib/*; do
             if [ -f "$file" ]; then
@@ -127,10 +127,10 @@ case "$METHOD" in
                 fi
             fi
         done
-        
+
         print_success "Deployment complete!"
         ;;
-        
+
     *)
         print_error "Unsupported method: $METHOD"
         echo "Supported methods: mpremote, ampy"
@@ -141,7 +141,7 @@ esac
 # Verify deployment if requested
 if [ "$VERIFY" = true ]; then
     print_step "Verifying deployment..."
-    
+
     # Check if verification script exists
     if [ -f "../verify_deployment.py" ]; then
         if python3 ../verify_deployment.py --port "$PORT"; then

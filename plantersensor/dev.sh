@@ -94,7 +94,7 @@ case "${1:-help}" in
         echo ""
         echo "Commands:"
         echo "  test         - Run test suite"
-        echo "  demo         - Run interactive demo" 
+        echo "  demo         - Run interactive demo"
         echo "  device-test  - Test CYD device connection"
         echo "               - device-test [PORT] to test specific port"
         echo "  verify       - Verify deployment on device"

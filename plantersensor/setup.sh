@@ -706,6 +706,65 @@ interactive_deploy() {
         fi
     fi
 
+    # Check if MicroPython is installed
+    print_step "Checking for MicroPython firmware..."
+    local has_micropython=false
+    
+    if command_exists mpremote; then
+        if source .venv/bin/activate 2>/dev/null && timeout 5 mpremote connect "$selected_port" eval "print('MicroPython detected')" 2>/dev/null | grep -q "MicroPython detected"; then
+            has_micropython=true
+            print_success "MicroPython firmware detected"
+        else
+            print_warning "MicroPython firmware not detected or not responding"
+        fi
+    else
+        print_warning "Cannot check MicroPython (mpremote not available)"
+    fi
+
+    # Offer firmware flashing if needed
+    if [ "$has_micropython" = false ]; then
+        echo ""
+        echo -e "${YELLOW}⚠ MicroPython firmware not detected on device${NC}"
+        echo "This device needs MicroPython firmware before deploying the application."
+        echo ""
+        echo "Options:"
+        echo "  1. Flash MicroPython firmware automatically (recommended)"
+        echo "  2. Continue anyway (manual firmware installation)"
+        echo "  3. Cancel deployment"
+        echo ""
+        
+        read -p "Choose option (1-3): " -r firmware_choice
+        
+        case "$firmware_choice" in
+            "1")
+                print_step "Starting MicroPython firmware installation..."
+                if source .venv/bin/activate && python flash_micropython.py --port "$selected_port"; then
+                    print_success "MicroPython firmware installed successfully!"
+                    has_micropython=true
+                else
+                    print_error "Firmware installation failed"
+                    echo "You may need to install it manually. See: https://micropython.org/download/"
+                    read -p "Continue with deployment anyway? (y/n): " -n 1 -r
+                    echo
+                    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                        return 1
+                    fi
+                fi
+                ;;
+            "2")
+                print_warning "Continuing without firmware check"
+                ;;
+            "3")
+                print_info "Deployment cancelled"
+                return 0
+                ;;
+            *)
+                print_error "Invalid choice"
+                return 1
+                ;;
+        esac
+    fi
+
     # Select deployment method
     echo
     echo "Select deployment method:"
@@ -851,7 +910,10 @@ show_deployment_instructions() {
     echo -e "${GREEN}1. Interactive deployment (recommended):${NC}"
     echo "   ./setup.sh deploy"
     echo ""
-    echo -e "${GREEN}2. Manual deployment script:${NC}"
+    echo -e "${GREEN}2. Flash MicroPython firmware only:${NC}"
+    echo "   ./setup.sh flash-firmware"
+    echo ""
+    echo -e "${GREEN}3. Manual deployment script:${NC}"
     echo "   ./find_cyd.sh                    # Find your device"
     echo "   cd deploy"
     echo "   ./deploy.sh -p /dev/ttyUSB0 -m mpremote"
@@ -901,6 +963,73 @@ main() {
 
         "deploy")
             interactive_deploy
+            ;;
+
+        "flash-firmware")
+            print_header "🔧 MICROPYTHON FIRMWARE FLASHER"
+            
+            # Check if flash script exists
+            if [ ! -f "flash_micropython.py" ]; then
+                print_error "flash_micropython.py not found. Please run setup first."
+                exit 1
+            fi
+
+            # Detect devices for firmware flashing
+            local detected_devices=()
+            case "$(detect_os)" in
+                "macos")
+                    for port in /dev/cu.usbserial-* /dev/cu.wchusbserial-*; do
+                        [ -e "$port" ] && detected_devices+=("$port")
+                    done
+                    ;;
+                "linux")
+                    for port in /dev/ttyUSB* /dev/ttyACM*; do
+                        [ -e "$port" ] && detected_devices+=("$port")
+                    done
+                    ;;
+            esac
+
+            # Let user select device
+            local selected_port=""
+            if [ ${#detected_devices[@]} -eq 1 ]; then
+                print_info "Found one device: ${detected_devices[0]}"
+                read -p "Flash firmware to this device? (y/n): " -n 1 -r
+                echo
+                if [[ $REPLY =~ ^[Yy]$ ]]; then
+                    selected_port="${detected_devices[0]}"
+                fi
+            elif [ ${#detected_devices[@]} -gt 1 ]; then
+                echo "Multiple devices detected:"
+                for i in "${!detected_devices[@]}"; do
+                    echo "  $((i+1)). ${detected_devices[i]}"
+                done
+                echo "  0. Enter manually"
+
+                read -p "Select device (1-${#detected_devices[@]}): " -r choice
+                if [[ "$choice" =~ ^[1-9][0-9]*$ ]] && [ "$choice" -le "${#detected_devices[@]}" ]; then
+                    selected_port="${detected_devices[$((choice-1))]}"
+                fi
+            fi
+
+            # Manual entry if needed
+            if [ -z "$selected_port" ]; then
+                read -p "Enter device port manually: " -r selected_port
+                if [ -z "$selected_port" ]; then
+                    print_error "No port specified"
+                    exit 1
+                fi
+            fi
+
+            # Flash firmware
+            print_step "Flashing MicroPython firmware to $selected_port..."
+            if source .venv/bin/activate 2>/dev/null && python flash_micropython.py --port "$selected_port"; then
+                print_success "Firmware flashing completed!"
+                echo ""
+                print_info "Next step: Run './setup.sh deploy' to deploy the stopwatch application"
+            else
+                print_error "Firmware flashing failed"
+                exit 1
+            fi
             ;;
 
         "clean")
@@ -965,18 +1094,20 @@ main() {
             echo "Usage: $0 [COMMAND]"
             echo ""
             echo "Commands:"
-            echo "  install    - Set up complete development environment (default)"
-            echo "  deploy     - Interactive deployment to CYD device"
-            echo "  clean      - Remove generated files and virtual environment"
-            echo "  update     - Update Python dependencies"
-            echo "  status     - Show project status and detected devices"
-            echo "  help       - Show this help message"
+            echo "  install       - Set up complete development environment (default)"
+            echo "  deploy        - Interactive deployment to CYD device"
+            echo "  flash-firmware- Flash MicroPython firmware to ESP32 device"
+            echo "  clean         - Remove generated files and virtual environment"
+            echo "  update        - Update Python dependencies"
+            echo "  status        - Show project status and detected devices"
+            echo "  help          - Show this help message"
             echo ""
             echo "Examples:"
-            echo "  $0                  # Full setup"
-            echo "  $0 install         # Same as above"
-            echo "  $0 deploy          # Interactive deployment"
-            echo "  $0 status          # Check project status"
+            echo "  $0                     # Full setup"
+            echo "  $0 install            # Same as above"
+            echo "  $0 deploy             # Interactive deployment"
+            echo "  $0 flash-firmware     # Flash MicroPython firmware only"
+            echo "  $0 status             # Check project status"
             echo ""
             echo "After setup, you can also use:"
             echo "  ./dev.sh test      # Run tests"
