@@ -5,22 +5,33 @@ set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
+# Function to run commands in virtual environment
+run_in_venv() {
+    if [ -d ".venv" ]; then
+        source .venv/bin/activate
+        "$@"
+    else
+        echo "Error: Virtual environment not found. Run ./setup.sh install first."
+        exit 1
+    fi
+}
+
 case "${1:-help}" in
     "test")
         echo "Running tests..."
-        uv run python test_stopwatch.py
+        run_in_venv python test_stopwatch.py
         ;;
     "demo")
         echo "Running demo..."
-        uv run python demo.py
+        run_in_venv python demo.py
         ;;
     "device-test")
         if [ -z "${2:-}" ]; then
             echo "Testing all devices..."
-            uv run python test_device.py --scan --test-all
+            run_in_venv python test_device.py --scan --test-all
         else
             echo "Testing device $2..."
-            uv run python test_device.py --port "$2"
+            run_in_venv python test_device.py --port "$2"
         fi
         ;;
     "verify")
@@ -30,40 +41,52 @@ case "${1:-help}" in
             exit 1
         else
             echo "Verifying deployment on $2..."
-            uv run python verify_deployment.py --port "$2"
+            run_in_venv python verify_deployment.py --port "$2"
         fi
         ;;
     "scan")
         echo "Scanning for CYD devices..."
-        uv run python test_device.py --scan
+        run_in_venv python test_device.py --scan
         ;;
     "format")
         echo "Formatting code..."
-        uv run black *.py
-        uv run ruff check --fix *.py
+        run_in_venv black *.py
+        run_in_venv ruff check --fix *.py
         ;;
     "lint")
         echo "Linting code..."
-        uv run ruff check *.py
-        uv run mypy *.py --ignore-missing-imports
+        run_in_venv ruff check *.py
+        run_in_venv mypy *.py --ignore-missing-imports
         ;;
     "clean")
         echo "Cleaning up..."
         rm -rf .venv __pycache__ .pytest_cache .mypy_cache
-        rm -rf deploy lib
+        rm -rf deploy lib requirements.txt dev-requirements.txt
         ;;
     "install")
         echo "Installing dependencies..."
-        uv sync
+        if [ -f "requirements.txt" ]; then
+            run_in_venv pip install -r requirements.txt
+            run_in_venv pip install -r dev-requirements.txt
+        else
+            echo "Error: requirements.txt not found. Run ./setup.sh install first."
+            exit 1
+        fi
         ;;
     "update")
         echo "Updating dependencies..."
-        uv sync --upgrade
+        if [ -f "requirements.txt" ]; then
+            run_in_venv pip install -U -r requirements.txt
+            run_in_venv pip install -U -r dev-requirements.txt
+        else
+            echo "Error: requirements.txt not found. Run ./setup.sh install first."
+            exit 1
+        fi
         ;;
     "shell")
         echo "Activating development shell..."
         echo "Use 'exit' to leave the shell"
-        uv run bash
+        source .venv/bin/activate && bash
         ;;
     *)
         echo "CYD Stopwatch Development Helper"

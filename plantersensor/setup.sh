@@ -79,15 +79,15 @@ detect_os() {
 # Install uv if not present
 install_uv() {
     print_step "Checking for uv package manager..."
-    
+
     if command_exists uv; then
         print_success "uv is already installed"
         uv --version
         return 0
     fi
-    
+
     print_step "Installing uv package manager..."
-    
+
     case "$(detect_os)" in
         "macos")
             if command_exists brew; then
@@ -109,7 +109,7 @@ install_uv() {
             exit 1
             ;;
     esac
-    
+
     # Verify installation
     if command_exists uv; then
         print_success "uv installed successfully"
@@ -123,9 +123,9 @@ install_uv() {
 # Install system dependencies
 install_system_deps() {
     print_step "Installing system dependencies..."
-    
+
     local os_type=$(detect_os)
-    
+
     case "$os_type" in
         "macos")
             if command_exists brew; then
@@ -156,14 +156,14 @@ install_system_deps() {
             print_info "- curl (usually included with Windows 10+)"
             ;;
     esac
-    
+
     print_success "System dependencies checked"
 }
 
 # Create and setup Python virtual environment
 setup_python_env() {
     print_step "Setting up Python virtual environment with uv..."
-    
+
     # Create requirements.txt for dependencies
     cat > requirements.txt << EOF
 # Core deployment tools
@@ -178,7 +178,7 @@ rich>=13.7.0
 click>=8.1.7
 tqdm>=4.66.0
 EOF
-    
+
     # Create dev-requirements.txt for development tools
     cat > dev-requirements.txt << EOF
 # Development tools
@@ -187,39 +187,39 @@ black>=23.9.0
 ruff>=0.1.0
 mypy>=1.6.0
 EOF
-    
+
     # Create virtual environment
     print_step "Creating virtual environment..."
     uv venv --python "$PYTHON_VERSION"
-    
+
     # Install core dependencies
     print_step "Installing core dependencies..."
     uv pip install -r requirements.txt
-    
+
     # Install development dependencies
     print_step "Installing development dependencies..."
     uv pip install -r dev-requirements.txt
-    
+
     print_success "Python environment setup complete"
 }
 
 # Download MicroPython libraries
 download_micropython_libs() {
     print_step "Downloading MicroPython libraries..."
-    
+
     mkdir -p "$LIB_DIR"
-    
+
     local libraries=(
         "ili9341.py:https://raw.githubusercontent.com/rdagger/micropython-ili9341/master/ili9341.py"
         "xglcd_font.py:https://raw.githubusercontent.com/rdagger/micropython-ili9341/master/xglcd_font.py"
         "xpt2046.py:https://raw.githubusercontent.com/rdagger/micropython-ili9341/master/xpt2046.py"
     )
-    
+
     for lib in "${libraries[@]}"; do
         local filename="${lib%%:*}"
         local url="${lib##*:}"
         local filepath="$LIB_DIR/$filename"
-        
+
         if [ -f "$filepath" ]; then
             print_success "$filename already exists"
         else
@@ -232,18 +232,18 @@ download_micropython_libs() {
             fi
         fi
     done
-    
+
     print_success "MicroPython libraries downloaded"
 }
 
 # Create deployment package
 create_deployment_package() {
     print_step "Creating deployment package..."
-    
+
     # Clean and create deploy directory
     rm -rf "$DEPLOY_DIR"
     mkdir -p "$DEPLOY_DIR"
-    
+
     # Copy application files
     local app_files=(
         "main.py"
@@ -253,7 +253,7 @@ create_deployment_package() {
         "boot.py"
         "config.py"
     )
-    
+
     for file in "${app_files[@]}"; do
         if [ -f "$file" ]; then
             cp "$file" "$DEPLOY_DIR/"
@@ -262,13 +262,13 @@ create_deployment_package() {
             print_warning "Missing $file"
         fi
     done
-    
+
     # Copy lib directory
     if [ -d "$LIB_DIR" ]; then
         cp -r "$LIB_DIR" "$DEPLOY_DIR/"
         print_success "Copied lib directory"
     fi
-    
+
     # Create deployment script
     cat > "$DEPLOY_DIR/deploy.sh" << 'EOF'
 #!/usr/bin/env bash
@@ -329,13 +329,13 @@ echo -e "${BLUE}Deploying CYD Stopwatch to $PORT using $METHOD...${NC}"
 case "$METHOD" in
     "mpremote")
         print_step "Using mpremote for deployment..."
-        
+
         # Check if mpremote is available
         if ! command -v mpremote >/dev/null 2>&1; then
             print_error "mpremote not found. Please install it or use the setup script."
             exit 1
         fi
-        
+
         # Deploy Python files
         print_step "Copying Python files..."
         if mpremote connect "$PORT" fs cp *.py :; then
@@ -344,7 +344,7 @@ case "$METHOD" in
             print_error "Failed to deploy Python files"
             exit 1
         fi
-        
+
         # Create lib directory and deploy libraries
         print_step "Creating lib directory and copying libraries..."
         mpremote connect "$PORT" fs mkdir lib 2>/dev/null || true
@@ -354,21 +354,21 @@ case "$METHOD" in
             print_error "Failed to deploy libraries"
             exit 1
         fi
-        
+
         print_success "Deployment complete!"
         ;;
-        
+
     "ampy")
         print_step "Using ampy for deployment..."
-        
+
         # Check if ampy is available
         if ! command -v ampy >/dev/null 2>&1; then
             print_error "ampy not found. Please install it or use the setup script."
             exit 1
         fi
-        
+
         export AMPY_PORT="$PORT"
-        
+
         # Deploy Python files
         print_step "Copying Python files..."
         for file in *.py; do
@@ -382,11 +382,11 @@ case "$METHOD" in
                 fi
             fi
         done
-        
+
         # Create lib directory and deploy libraries
         print_step "Creating lib directory..."
         ampy mkdir lib 2>/dev/null || true
-        
+
         print_step "Copying libraries..."
         for file in lib/*; do
             if [ -f "$file" ]; then
@@ -400,10 +400,10 @@ case "$METHOD" in
                 fi
             fi
         done
-        
+
         print_success "Deployment complete!"
         ;;
-        
+
     *)
         print_error "Unsupported method: $METHOD"
         echo "Supported methods: mpremote, ampy"
@@ -414,7 +414,7 @@ esac
 # Verify deployment if requested
 if [ "$VERIFY" = true ]; then
     print_step "Verifying deployment..."
-    
+
     # Check if verification script exists
     if [ -f "../verify_deployment.py" ]; then
         if python3 ../verify_deployment.py --port "$PORT"; then
@@ -444,16 +444,16 @@ echo "- If the screen is blank, check your connections"
 echo "- If touch doesn't work, verify the touch pins"
 echo "- Run verification: ../dev.sh verify $PORT"
 EOF
-    
+
     chmod +x "$DEPLOY_DIR/deploy.sh"
-    
+
     print_success "Deployment package created in $DEPLOY_DIR"
 }
 
 # Create helpful scripts
 create_helper_scripts() {
     print_step "Creating helper scripts..."
-    
+
     # Development script
     cat > "${PROJECT_DIR}/dev.sh" << EOF
 #!/usr/bin/env bash
@@ -463,22 +463,33 @@ set -euo pipefail
 
 cd "\$(dirname "\${BASH_SOURCE[0]}")"
 
+# Function to run commands in virtual environment
+run_in_venv() {
+    if [ -d ".venv" ]; then
+        source .venv/bin/activate
+        "\$@"
+    else
+        echo "Error: Virtual environment not found. Run ./setup.sh install first."
+        exit 1
+    fi
+}
+
 case "\${1:-help}" in
     "test")
         echo "Running tests..."
-        uv run python test_stopwatch.py
+        run_in_venv python test_stopwatch.py
         ;;
     "demo")
         echo "Running demo..."
-        uv run python demo.py
+        run_in_venv python demo.py
         ;;
     "device-test")
         if [ -z "\${2:-}" ]; then
             echo "Testing all devices..."
-            uv run python test_device.py --scan --test-all
+            run_in_venv python test_device.py --scan --test-all
         else
             echo "Testing device \$2..."
-            uv run python test_device.py --port "\$2"
+            run_in_venv python test_device.py --port "\$2"
         fi
         ;;
     "verify")
@@ -488,40 +499,52 @@ case "\${1:-help}" in
             exit 1
         else
             echo "Verifying deployment on \$2..."
-            uv run python verify_deployment.py --port "\$2"
+            run_in_venv python verify_deployment.py --port "\$2"
         fi
         ;;
     "scan")
         echo "Scanning for CYD devices..."
-        uv run python test_device.py --scan
+        run_in_venv python test_device.py --scan
         ;;
     "format")
         echo "Formatting code..."
-        uv run black *.py
-        uv run ruff check --fix *.py
+        run_in_venv black *.py
+        run_in_venv ruff check --fix *.py
         ;;
     "lint")
         echo "Linting code..."
-        uv run ruff check *.py
-        uv run mypy *.py --ignore-missing-imports
+        run_in_venv ruff check *.py
+        run_in_venv mypy *.py --ignore-missing-imports
         ;;
     "clean")
         echo "Cleaning up..."
         rm -rf .venv __pycache__ .pytest_cache .mypy_cache
-        rm -rf deploy lib
+        rm -rf deploy lib requirements.txt dev-requirements.txt
         ;;
     "install")
         echo "Installing dependencies..."
-        uv sync
+        if [ -f "requirements.txt" ]; then
+            run_in_venv pip install -r requirements.txt
+            run_in_venv pip install -r dev-requirements.txt
+        else
+            echo "Error: requirements.txt not found. Run ./setup.sh install first."
+            exit 1
+        fi
         ;;
     "update")
         echo "Updating dependencies..."
-        uv sync --upgrade
+        if [ -f "requirements.txt" ]; then
+            run_in_venv pip install -U -r requirements.txt
+            run_in_venv pip install -U -r dev-requirements.txt
+        else
+            echo "Error: requirements.txt not found. Run ./setup.sh install first."
+            exit 1
+        fi
         ;;
     "shell")
         echo "Activating development shell..."
         echo "Use 'exit' to leave the shell"
-        uv run bash
+        source .venv/bin/activate && bash
         ;;
     *)
         echo "CYD Stopwatch Development Helper"
@@ -529,7 +552,7 @@ case "\${1:-help}" in
         echo ""
         echo "Commands:"
         echo "  test         - Run test suite"
-        echo "  demo         - Run interactive demo" 
+        echo "  demo         - Run interactive demo"
         echo "  device-test  - Test CYD device connection"
         echo "               - device-test [PORT] to test specific port"
         echo "  verify       - Verify deployment on device"
@@ -549,9 +572,9 @@ case "\${1:-help}" in
         ;;
 esac
 EOF
-    
+
     chmod +x "${PROJECT_DIR}/dev.sh"
-    
+
     # Port finder script
     cat > "${PROJECT_DIR}/find_cyd.sh" << 'EOF'
 #!/usr/bin/env bash
@@ -580,18 +603,18 @@ echo "  macOS:   /dev/cu.usbserial-*"
 echo "  Linux:   /dev/ttyUSB0 or /dev/ttyACM0"
 echo "  Windows: COM3, COM4, etc."
 EOF
-    
+
     chmod +x "${PROJECT_DIR}/find_cyd.sh"
-    
+
     print_success "Helper scripts created"
 }
 
 # Detect CYD devices
 detect_cyd_devices() {
     print_step "Scanning for CYD devices..."
-    
+
     local devices=()
-    
+
     case "$(detect_os)" in
         "macos")
             # Look for USB serial devices
@@ -610,7 +633,7 @@ detect_cyd_devices() {
             return 0
             ;;
     esac
-    
+
     if [ ${#devices[@]} -eq 0 ]; then
         print_warning "No potential CYD devices found"
         print_info "Make sure your CYD is connected and drivers are installed"
@@ -628,13 +651,13 @@ detect_cyd_devices() {
 # Interactive deployment
 interactive_deploy() {
     print_header "🚀 INTERACTIVE DEPLOYMENT"
-    
+
     # Check if deployment package exists
     if [ ! -d "$DEPLOY_DIR" ]; then
         print_error "Deployment package not found. Please run setup first."
         return 1
     fi
-    
+
     # Detect devices
     local detected_devices=()
     if detect_cyd_devices; then
@@ -651,7 +674,7 @@ interactive_deploy() {
                 ;;
         esac
     fi
-    
+
     # Let user select device
     local selected_port=""
     if [ ${#detected_devices[@]} -eq 1 ]; then
@@ -667,13 +690,13 @@ interactive_deploy() {
             echo "  $((i+1)). ${detected_devices[i]}"
         done
         echo "  0. Enter manually"
-        
+
         read -p "Select device (1-${#detected_devices[@]}): " -r choice
         if [[ "$choice" =~ ^[1-9][0-9]*$ ]] && [ "$choice" -le "${#detected_devices[@]}" ]; then
             selected_port="${detected_devices[$((choice-1))]}"
         fi
     fi
-    
+
     # Manual entry if needed
     if [ -z "$selected_port" ]; then
         read -p "Enter device port manually: " -r selected_port
@@ -682,64 +705,64 @@ interactive_deploy() {
             return 1
         fi
     fi
-    
+
     # Select deployment method
     echo
     echo "Select deployment method:"
     echo "  1. mpremote (recommended)"
     echo "  2. ampy (legacy)"
     echo "  3. Show manual instructions"
-    
+
     read -p "Choose method (1-3): " -r method_choice
-    
+
     case "$method_choice" in
         "1")
             print_step "Deploying with mpremote to $selected_port..."
             if ! command_exists mpremote; then
                 print_error "mpremote not found. Installing..."
-                uv add mpremote
+                uv pip install mpremote
             fi
-            
+
             cd "$DEPLOY_DIR"
-            
+
             # Deploy files
             print_step "Copying Python files..."
-            if uv run mpremote connect "$selected_port" fs cp *.py :; then
+            if source ../.venv/bin/activate && mpremote connect "$selected_port" fs cp *.py :; then
                 print_success "Python files deployed"
             else
                 print_error "Failed to deploy Python files"
                 return 1
             fi
-            
+
             # Create lib directory and deploy libraries
             print_step "Creating lib directory and copying libraries..."
-            uv run mpremote connect "$selected_port" fs mkdir lib 2>/dev/null || true
-            if uv run mpremote connect "$selected_port" fs cp lib/* :lib/; then
+            source ../.venv/bin/activate && mpremote connect "$selected_port" fs mkdir lib 2>/dev/null || true
+            if source ../.venv/bin/activate && mpremote connect "$selected_port" fs cp lib/* :lib/; then
                 print_success "Libraries deployed"
             else
                 print_error "Failed to deploy libraries"
                 return 1
             fi
-            
+
             print_success "Deployment complete! Reset your CYD to start the stopwatch."
             ;;
-            
+
         "2")
             print_step "Deploying with ampy to $selected_port..."
             if ! command_exists ampy; then
                 print_error "ampy not found. Installing..."
-                uv add adafruit-ampy
+                uv pip install adafruit-ampy
             fi
-            
+
             export AMPY_PORT="$selected_port"
             cd "$DEPLOY_DIR"
-            
+
             # Deploy files
             print_step "Copying Python files..."
             for file in *.py; do
                 if [ -f "$file" ]; then
                     print_step "Uploading $file..."
-                    if uv run ampy put "$file" "$file"; then
+                    if source ../.venv/bin/activate && ampy put "$file" "$file"; then
                         print_success "Uploaded $file"
                     else
                         print_error "Failed to upload $file"
@@ -747,17 +770,17 @@ interactive_deploy() {
                     fi
                 fi
             done
-            
+
             # Create lib directory and deploy libraries
             print_step "Creating lib directory..."
-            uv run ampy mkdir lib 2>/dev/null || true
-            
+            source ../.venv/bin/activate && ampy mkdir lib 2>/dev/null || true
+
             print_step "Copying libraries..."
             for file in lib/*; do
                 if [ -f "$file" ]; then
                     local filename=$(basename "$file")
                     print_step "Uploading lib/$filename..."
-                    if uv run ampy put "$file" "lib/$filename"; then
+                    if source ../.venv/bin/activate && ampy put "$file" "lib/$filename"; then
                         print_success "Uploaded lib/$filename"
                     else
                         print_error "Failed to upload lib/$filename"
@@ -765,14 +788,14 @@ interactive_deploy() {
                     fi
                 fi
             done
-            
+
             print_success "Deployment complete! Reset your CYD to start the stopwatch."
             ;;
-            
+
         "3")
             show_manual_instructions "$selected_port"
             ;;
-            
+
         *)
             print_error "Invalid choice"
             return 1
@@ -780,16 +803,16 @@ interactive_deploy() {
     esac
 }
 
-# Show manual deployment instructions  
+# Show manual deployment instructions
 show_manual_instructions() {
     local port="${1:-/dev/ttyUSB0}"
-    
+
     print_header "📖 MANUAL DEPLOYMENT INSTRUCTIONS"
-    
+
     echo -e "${GREEN}Port: ${port}${NC}"
     echo -e "${GREEN}Files location: ${DEPLOY_DIR}${NC}"
     echo ""
-    
+
     echo -e "${BLUE}Method 1: Using Thonny IDE (Easiest)${NC}"
     echo "1. Install Thonny: https://thonny.org/"
     echo "2. Open Thonny → Tools → Options → Interpreter"
@@ -798,13 +821,13 @@ show_manual_instructions() {
     echo "5. Save each file to device (Ctrl+Shift+S)"
     echo "6. Create 'lib' folder on device and upload lib files"
     echo ""
-    
+
     echo -e "${BLUE}Method 2: Using mpremote${NC}"
     echo "uv run mpremote connect $port fs cp $DEPLOY_DIR/*.py :"
     echo "uv run mpremote connect $port fs mkdir lib"
     echo "uv run mpremote connect $port fs cp $DEPLOY_DIR/lib/* :lib/"
     echo ""
-    
+
     echo -e "${BLUE}Method 3: Using WebREPL (if WiFi configured)${NC}"
     echo "1. Enable WebREPL on your ESP32"
     echo "2. Connect to ESP32 WiFi"
@@ -816,13 +839,13 @@ show_manual_instructions() {
 # Show deployment instructions
 show_deployment_instructions() {
     print_header "🚀 DEPLOYMENT READY"
-    
+
     echo -e "${GREEN}Your CYD Stopwatch is ready for deployment!${NC}\n"
-    
+
     echo -e "${CYAN}📁 Files prepared in:${NC} ${DEPLOY_DIR}"
     echo -e "${CYAN}🐍 Virtual environment:${NC} ${VENV_DIR}"
     echo ""
-    
+
     echo -e "${YELLOW}QUICK DEPLOY OPTIONS:${NC}"
     echo ""
     echo -e "${GREEN}1. Interactive deployment (recommended):${NC}"
@@ -839,7 +862,7 @@ show_deployment_instructions() {
     echo "   ./dev.sh format  # Format code"
     echo "   ./dev.sh lint    # Check code quality"
     echo ""
-    
+
     echo -e "${BLUE}💡 TIP: Run './setup.sh deploy' for guided deployment!${NC}"
     echo ""
     echo -e "${GREEN}🎉 Happy timing with your CYD Stopwatch!${NC}"
@@ -848,22 +871,22 @@ show_deployment_instructions() {
 # Main installation process
 main() {
     local command="${1:-install}"
-    
+
     case "$command" in
         "install"|"setup")
             print_header "🎯 CYD STOPWATCH - UNIVERSAL INSTALLER"
-            
+
             echo "This installer will set up a complete development environment"
             echo "for the CYD Stopwatch application using modern Python tooling."
             echo ""
-            
+
             # Check if we're in the right directory
             if [ ! -f "main.py" ] || [ ! -f "stopwatch.py" ]; then
                 print_error "Please run this installer from the plantersensor directory"
                 print_error "Expected files: main.py, stopwatch.py, display_manager.py, etc."
                 exit 1
             fi
-            
+
             # Installation steps
             install_uv
             install_system_deps
@@ -871,15 +894,15 @@ main() {
             download_micropython_libs
             create_deployment_package
             create_helper_scripts
-            
+
             print_header "✅ INSTALLATION COMPLETE"
             show_deployment_instructions
             ;;
-            
+
         "deploy")
             interactive_deploy
             ;;
-            
+
         "clean")
             print_step "Cleaning up generated files..."
             rm -rf .venv __pycache__ .pytest_cache .mypy_cache
@@ -887,7 +910,7 @@ main() {
             rm -f dev.sh find_cyd.sh
             print_success "Cleanup complete"
             ;;
-            
+
         "update")
             print_step "Updating dependencies..."
             if [ -f "pyproject.toml" ]; then
@@ -898,47 +921,47 @@ main() {
                 exit 1
             fi
             ;;
-            
+
         "status"|"info")
             print_header "📊 PROJECT STATUS"
-            
+
             echo -e "${CYAN}Project Directory:${NC} $PROJECT_DIR"
             echo -e "${CYAN}Python Version:${NC} $PYTHON_VERSION"
             echo ""
-            
+
             if [ -d "$VENV_DIR" ]; then
                 echo -e "${GREEN}✓ Virtual environment exists${NC}"
             else
                 echo -e "${RED}✗ Virtual environment missing${NC}"
             fi
-            
+
             if [ -f "pyproject.toml" ]; then
                 echo -e "${GREEN}✓ Python project configured${NC}"
             else
                 echo -e "${RED}✗ Python project not configured${NC}"
             fi
-            
+
             if [ -d "$LIB_DIR" ]; then
                 echo -e "${GREEN}✓ MicroPython libraries downloaded${NC}"
                 echo "   $(ls -1 "$LIB_DIR" | wc -l | tr -d ' ') libraries found"
             else
                 echo -e "${RED}✗ MicroPython libraries missing${NC}"
             fi
-            
+
             if [ -d "$DEPLOY_DIR" ]; then
                 echo -e "${GREEN}✓ Deployment package ready${NC}"
                 echo "   $(ls -1 "$DEPLOY_DIR"/*.py 2>/dev/null | wc -l | tr -d ' ') Python files"
             else
                 echo -e "${RED}✗ Deployment package not created${NC}"
             fi
-            
+
             echo ""
             detect_cyd_devices
             ;;
-            
+
         "help"|"-h"|"--help")
             print_header "🎯 CYD STOPWATCH INSTALLER HELP"
-            
+
             echo "Usage: $0 [COMMAND]"
             echo ""
             echo "Commands:"
@@ -960,7 +983,7 @@ main() {
             echo "  ./dev.sh demo      # Interactive demo"
             echo "  ./find_cyd.sh      # Find CYD devices"
             ;;
-            
+
         *)
             print_error "Unknown command: $command"
             print_info "Run '$0 help' for available commands"
