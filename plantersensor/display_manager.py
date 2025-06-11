@@ -31,7 +31,7 @@ class DisplayManager:
             dc=Pin(2),
             cs=Pin(15),
             rst=Pin(15),
-            rotation=1,  # Landscape mode
+            rotation=0,  # Portrait mode (changed from 1)
             width=320,
             height=240
         )
@@ -91,8 +91,8 @@ class DisplayManager:
             title_x = (self.screen_width - len(title) * 12) // 2
             self.display.draw_text(title_x, 10, title, self.large_font, self.colors['yellow'])
         else:
-            # Fallback to simple text
-            self.display.draw_text(100, 10, title, font_size=2, color=self.colors['yellow'])
+            # Fallback to simple text - remove font_size parameter
+            self.display.draw_text(100, 10, title, self.colors['yellow'])
 
         # Draw initial time display
         self.draw_time_display("00:00:00.000", False)
@@ -116,8 +116,8 @@ class DisplayManager:
             time_x = (self.screen_width - len(time_str) * 12) // 2
             self.display.draw_text(time_x, 70, time_str, self.large_font, time_color)
         else:
-            # Fallback display
-            self.display.draw_text(80, 70, time_str, font_size=3, color=time_color)
+            # Fallback display - remove font_size parameter
+            self.display.draw_text(80, 70, time_str, time_color)
 
         # Draw running indicator
         if is_running:
@@ -245,8 +245,8 @@ class DisplayManager:
         if self.font_available:
             self.display.draw_text(x_pos, 80, time_str, self.large_font, color)
         else:
-            # Fallback to built-in font with larger size
-            self.display.draw_text(x_pos, 80, time_str, font_size=2, color=color)
+            # Fallback to built-in font - remove font_size parameter
+            self.display.draw_text(x_pos, 80, time_str, color)
 
     def cleanup(self):
         """Clean up display resources"""

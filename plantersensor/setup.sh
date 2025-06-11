@@ -709,7 +709,7 @@ interactive_deploy() {
     # Check if MicroPython is installed
     print_step "Checking for MicroPython firmware..."
     local has_micropython=false
-    
+
     if command_exists mpremote; then
         if source .venv/bin/activate 2>/dev/null && timeout 5 mpremote connect "$selected_port" eval "print('MicroPython detected')" 2>/dev/null | grep -q "MicroPython detected"; then
             has_micropython=true
@@ -732,9 +732,9 @@ interactive_deploy() {
         echo "  2. Continue anyway (manual firmware installation)"
         echo "  3. Cancel deployment"
         echo ""
-        
+
         read -p "Choose option (1-3): " -r firmware_choice
-        
+
         case "$firmware_choice" in
             "1")
                 print_step "Starting MicroPython firmware installation..."
@@ -967,7 +967,7 @@ main() {
 
         "flash-firmware")
             print_header "🔧 MICROPYTHON FIRMWARE FLASHER"
-            
+
             # Check if flash script exists
             if [ ! -f "flash_micropython.py" ]; then
                 print_error "flash_micropython.py not found. Please run setup first."
