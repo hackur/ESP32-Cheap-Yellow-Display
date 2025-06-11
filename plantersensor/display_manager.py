@@ -80,6 +80,10 @@ class DisplayManager:
 
         print("Display initialized!")
 
+    def clear_screen(self):
+        """Clears the entire display to the background color."""
+        self.display.fill_rectangle(0, 0, self.display.width, self.display.height, self.colors['black'])
+
     def draw_initial_screen(self):
         """Draw the initial application screen"""
         # Clear screen
@@ -91,8 +95,10 @@ class DisplayManager:
             title_x = (self.screen_width - len(title) * 12) // 2
             self.display.draw_text(title_x, 10, title, self.large_font, self.colors['yellow'])
         else:
-            # Fallback to simple text - remove font_size parameter
-            self.display.draw_text(100, 10, title, self.colors['yellow'])
+            # Fallback to simple text - use draw_text8x8
+            self.display.fill_rectangle(0, 0, self.display.width, self.display.height, self.colors['black'])  # Clear screen
+            self.display.draw_text8x8(60, 110, "Stopwatch", self.colors['yellow'], background=self.colors['black'])
+            self.display.draw_text8x8(20, 150, "Tap to Start", self.colors['yellow'], background=self.colors['black'])
 
         # Draw initial time display
         self.draw_time_display("00:00:00.000", False)
@@ -106,7 +112,7 @@ class DisplayManager:
     def draw_time_display(self, time_str, is_running):
         """Draw the main time display"""
         # Clear time area
-        self.display.fill_rect(0, 50, self.screen_width, 80, self.colors['black'])
+        self.display.fill_rectangle(0, 50, self.screen_width, 80, self.colors['black'])
 
         # Choose color based on running state
         time_color = self.colors['green'] if is_running else self.colors['white']
@@ -114,10 +120,13 @@ class DisplayManager:
         if self.font_available:
             # Calculate center position for time
             time_x = (self.screen_width - len(time_str) * 12) // 2
-            self.display.draw_text(time_x, 70, time_str, self.large_font, time_color)
+            self.display.fill_rectangle(time_x, 70, 200, 50, self.colors['black'])  # Adjust size as needed
+            self.display.draw_text(time_x, 70, time_str, self.large_font, time_color, background=self.colors['black'])
         else:
-            # Fallback display - remove font_size parameter
-            self.display.draw_text(80, 70, time_str, time_color)
+            # Fallback display - use draw_text8x8
+            time_x = (self.screen_width - len(time_str) * 8) // 2
+            self.display.fill_rectangle(time_x, 70, 200, 16, self.colors['black'])  # Clear for 8x8 font (2 lines)
+            self.display.draw_text8x8(time_x, 70, time_str, time_color, background=self.colors['black'])
 
         # Draw running indicator
         if is_running:
@@ -130,34 +139,44 @@ class DisplayManager:
         """Draw the control buttons"""
         # Start/Stop button
         x, y, w, h = self.buttons['start_stop']
-        self.display.fill_rect(x, y, w, h, self.colors['dark_gray'])
-        self.display.draw_rect(x, y, w, h, self.colors['white'])
+        self.display.fill_rectangle(x, y, w, h, self.colors['dark_gray'])
+        self.display.draw_rectangle(x, y, w, h, self.colors['white']) # Changed draw_rect to draw_rectangle
 
         # Center text in button
-        text_x = x + (w - len(left_text) * 8) // 2
-        text_y = y + (h - 16) // 2
-        self.display.draw_text(text_x, text_y, left_text, color=self.colors['white'])
+        if self.font_available:
+            text_x = x + (w - len(left_text) * 12) // 2 # Assuming 12px width for custom font
+            text_y = y + (h - 24) // 2 # Assuming 24px height for custom font
+            self.display.draw_text(text_x, text_y, left_text, self.large_font, self.colors['white'], background=self.colors['dark_gray'])
+        else:
+            text_x = x + (w - len(left_text) * 8) // 2
+            text_y = y + (h - 8) // 2 # Adjusted for 8x8 font
+            self.display.draw_text8x8(text_x, text_y, left_text, self.colors['white'], background=self.colors['dark_gray'])
 
         # Reset button
         x, y, w, h = self.buttons['reset']
-        self.display.fill_rect(x, y, w, h, self.colors['dark_gray'])
-        self.display.draw_rect(x, y, w, h, self.colors['white'])
+        self.display.fill_rectangle(x, y, w, h, self.colors['dark_gray'])
+        self.display.draw_rectangle(x, y, w, h, self.colors['white']) # Changed draw_rect to draw_rectangle
 
-        text_x = x + (w - len(right_text) * 8) // 2
-        text_y = y + (h - 16) // 2
-        self.display.draw_text(text_x, text_y, right_text, color=self.colors['white'])
+        if self.font_available:
+            text_x = x + (w - len(right_text) * 12) // 2
+            text_y = y + (h - 24) // 2
+            self.display.draw_text(text_x, text_y, right_text, self.large_font, self.colors['white'], background=self.colors['dark_gray'])
+        else:
+            text_x = x + (w - len(right_text) * 8) // 2
+            text_y = y + (h - 8) // 2 # Adjusted for 8x8 font
+            self.display.draw_text8x8(text_x, text_y, right_text, self.colors['white'], background=self.colors['dark_gray'])
 
     def draw_status_bar(self, status, light_level):
         """Draw status information at the bottom"""
         # Clear status area
-        self.display.fill_rect(0, 230, self.screen_width, 10, self.colors['black'])
+        self.display.fill_rectangle(0, 230, self.screen_width, 10, self.colors['black'])
 
-        # Draw status text
-        self.display.draw_text(5, 230, f"Status: {status}", color=self.colors['cyan'])
+        # Draw status text using 8x8 font
+        self.display.draw_text8x8(5, 230, f"Status: {status}", self.colors['cyan'], background=self.colors['black'])
 
-        # Draw light level indicator
+        # Draw light level indicator using 8x8 font
         light_text = f"Light: {light_level//1000}k"
-        self.display.draw_text(200, 230, light_text, color=self.colors['cyan'])
+        self.display.draw_text8x8(200, 230, light_text, self.colors['cyan'], background=self.colors['black'])
 
     def update_stopwatch_display(self, elapsed_time, is_running, light_level):
         """Update the complete stopwatch display"""
@@ -204,14 +223,14 @@ class DisplayManager:
             # Estimate width for built-in font
             text_width = len(text) * 8
             x = (self.screen_width - text_width) // 2
-            self.display.draw_text(x, y, text, color=color)
+            self.display.draw_text8x8(x, y, text, color=color)
 
     def show_message(self, message, duration_ms=2000):
         """Show a temporary message on screen"""
         # Save current screen (simplified)
         # Clear center area
-        self.display.fill_rect(50, 100, 220, 40, self.colors['black'])
-        self.display.draw_rect(50, 100, 220, 40, self.colors['yellow'])
+        self.display.fill_rectangle(50, 100, 220, 40, self.colors['black'])
+        self.display.draw_rectangle(50, 100, 220, 40, self.colors['yellow']) # Changed draw_rect to draw_rectangle
 
         # Draw message
         self.draw_text_centered(115, message, self.colors['yellow'])
@@ -222,17 +241,17 @@ class DisplayManager:
     def draw_progress_bar(self, x, y, width, height, percentage, color):
         """Draw a progress bar (useful for showing session progress)"""
         # Draw border
-        self.display.draw_rect(x, y, width, height, self.colors['white'])
+        self.display.draw_rectangle(x, y, width, height, self.colors['white']) # Changed draw_rect to draw_rectangle
 
         # Fill progress
         fill_width = int((width - 2) * percentage / 100)
         if fill_width > 0:
-            self.display.fill_rect(x + 1, y + 1, fill_width, height - 2, color)
+            self.display.fill_rectangle(x + 1, y + 1, fill_width, height - 2, color)
 
     def display_large_time(self, time_str, is_running):
         """Display time in large, centered format"""
         # Clear the time area
-        self.display.fill_rect(20, 60, 280, 60, self.colors['black'])
+        self.display.fill_rectangle(20, 60, 280, 60, self.colors['black'])
 
         # Choose color based on state
         color = self.colors['green'] if is_running else self.colors['cyan']
@@ -243,10 +262,12 @@ class DisplayManager:
         x_pos = (self.screen_width - text_width) // 2
 
         if self.font_available:
-            self.display.draw_text(x_pos, 80, time_str, self.large_font, color)
+            self.display.fill_rectangle(x_pos, 80, 200, 50, self.colors['black'])  # Adjust size as needed
+            self.display.draw_text(x_pos, 80, time_str, self.large_font, color, background=self.colors['black'])
         else:
-            # Fallback to built-in font - remove font_size parameter
-            self.display.draw_text(x_pos, 80, time_str, color)
+            # Fallback to built-in font - use draw_text8x8
+            self.display.fill_rectangle(x_pos, 80, 200, 16, self.colors['black'])  # Clear for 8x8 font
+            self.display.draw_text8x8(x_pos, 80, time_str, color, background=self.colors['black'])
 
     def cleanup(self):
         """Clean up display resources"""
